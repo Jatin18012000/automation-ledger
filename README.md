@@ -2,7 +2,7 @@
 
 An interactive dashboard exploring AI exposure across 271 US occupations — wages, growth outlook, and the cognitive skills AI threatens most.
 
-**[View the live dashboard →](#)** *https://jatin18012000.github.io/automation-ledger/*
+**[View the live dashboard →](https://jatin18012000.github.io/automation-ledger/)**
 
 ![Dashboard preview](preview.png)
 
@@ -29,10 +29,10 @@ python3 -m http.server 8000
 
 ## Host it yourself for free (GitHub Pages)
 
-1. Push this repo to your own GitHub account
+1. Fork this repo to your own GitHub account
 2. Go to **Settings → Pages**
 3. Under "Build and deployment," set **Source** to `Deploy from a branch`, branch `main`, folder `/ (root)`
-4. Save — your live URL will be `https://Jatin18012000.github.io/automation-ledger/`
+4. Save — your live URL will be `https://YOUR-USERNAME.github.io/automation-ledger/`
 
 Costs nothing, no card required, updates automatically every time you push.
 
