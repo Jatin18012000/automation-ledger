@@ -58,13 +58,14 @@
   /* ---------- KPI strip ---------- */
   .kpi-strip{
     display:grid; grid-template-columns:repeat(4,1fr); border:1px solid var(--line);
-    margin:28px 0 44px; background:var(--paper-card);
+    margin:28px 0 10px; background:var(--paper-card);
   }
   .kpi{padding:18px 20px; border-right:1px solid var(--line);}
   .kpi:last-child{border-right:none;}
   .kpi-label{font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); margin:0 0 8px;}
   .kpi-value{font-family:var(--serif); font-size:28px; font-weight:600; margin:0;}
   .kpi-value.rust{color:var(--rust);}
+  .fx-note{font-family:var(--mono); font-size:11px; color:var(--ink-faint); margin:0 0 34px;}
 
   /* ---------- Section headers ---------- */
   section{margin-bottom:52px;}
@@ -142,6 +143,7 @@
   </header>
 
   <div class="kpi-strip" id="kpi-strip"></div>
+  <p class="fx-note" id="fx-note"></p>
 
   <section id="lookup-section">
     <div class="section-head"><span class="section-num">01</span><h2>Look up an occupation</h2></div>
@@ -204,18 +206,66 @@ document.getElementById('today-date').textContent = new Date().toLocaleDateStrin
 const jobs = DASHBOARD_DATA.jobs;
 const cognitive = DASHBOARD_DATA.cognitive;
 
+/* ---------- Currency conversion (display layer only — source data stays USD) ---------- */
+// Fallback rate as of early August 2026. Update this periodically if the live fetch keeps failing.
+let usdToInrRate = 95.5;
+let currentJob = null;
+
+function toINR(usdAmount){
+  return usdAmount * usdToInrRate;
+}
+
+function formatINR(usdAmount, {abbreviated=false} = {}){
+  const inr = toINR(usdAmount);
+  if(abbreviated){
+    if(inr >= 1e7) return '₹' + (inr/1e7).toFixed(2) + 'Cr';
+    if(inr >= 1e5) return '₹' + (inr/1e5).toFixed(1) + 'L';
+  }
+  return '₹' + Math.round(inr).toLocaleString('en-IN');
+}
+
+async function fetchExchangeRate(){
+  try{
+    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+    const data = await res.json();
+    const rate = data && data.rates && data.rates.INR;
+    if(typeof rate === 'number' && rate > 0){
+      usdToInrRate = rate;
+    }
+  }catch(err){
+    // Network/API unavailable — keep the fallback rate set above.
+  }
+  refreshCurrencyDisplay();
+}
+
+function refreshCurrencyDisplay(){
+  renderKpiStrip();
+  document.getElementById('fx-note').textContent =
+    `Wages converted from USD at the live exchange rate (₹${usdToInrRate.toFixed(2)} per $1).`;
+  if(currentJob){
+    document.getElementById('occ-wage').textContent = formatINR(currentJob.wage, {abbreviated:false});
+  }
+  scatterChart.update();
+}
+
 /* ---------- KPI strip ---------- */
 const highCount = jobs.filter(j=>j.exp_level==='High').length;
 const avgWageHigh = Math.round(jobs.filter(j=>j.exp_level==='High').reduce((s,j)=>s+j.wage,0)/highCount);
-const kpis = [
-  {label:'Occupations tracked', value: jobs.length},
-  {label:'High exposure', value: highCount, rust:true},
-  {label:'Avg wage, high exposure', value: '$'+(avgWageHigh/1000).toFixed(1)+'k'},
-  {label:'Wage–exposure correlation', value: '0.29'}
-];
-document.getElementById('kpi-strip').innerHTML = kpis.map(k=>
-  `<div class="kpi"><p class="kpi-label">${k.label}</p><p class="kpi-value${k.rust?' rust':''}">${k.value}</p></div>`
-).join('');
+
+function renderKpiStrip(){
+  const kpis = [
+    {label:'Occupations tracked', value: jobs.length},
+    {label:'High exposure', value: highCount, rust:true},
+    {label:'Avg wage, high exposure', value: formatINR(avgWageHigh, {abbreviated:true})},
+    {label:'Wage–exposure correlation', value: '0.29'}
+  ];
+  document.getElementById('kpi-strip').innerHTML = kpis.map(k=>
+    `<div class="kpi"><p class="kpi-label">${k.label}</p><p class="kpi-value${k.rust?' rust':''}">${k.value}</p></div>`
+  ).join('');
+}
+renderKpiStrip();
+document.getElementById('fx-note').textContent =
+  `Wages converted from USD at the live exchange rate (₹${usdToInrRate.toFixed(2)} per $1).`;
 
 /* ---------- Lookup / autocomplete ---------- */
 const searchInput = document.getElementById('search-input');
@@ -249,13 +299,14 @@ function drawGauge(score, level){
 }
 
 function selectOccupation(job){
+  currentJob = job;
   occCard.classList.add('visible');
   emptyHint.style.display = 'none';
   drawGauge(job.exp_human, job.exp_level);
   document.getElementById('gauge-value').textContent = 'Exposure score';
   document.getElementById('occ-title').innerHTML = job.title + ` <span class="occ-badge ${job.exp_level}">${job.exp_level} exposure</span>`;
   document.getElementById('occ-sub').textContent = `${job.category} · ${job.education}`;
-  document.getElementById('occ-wage').textContent = '$' + job.wage.toLocaleString();
+  document.getElementById('occ-wage').textContent = formatINR(job.wage, {abbreviated:false});
   document.getElementById('occ-growth').textContent = job.growth_outlook;
   document.getElementById('occ-strength').textContent = job.distinctive;
   highlightScatterPoint(job);
@@ -332,10 +383,10 @@ const scatterChart = new Chart(document.getElementById('scatterChart'), {
     responsive:true, maintainAspectRatio:false,
     plugins:{
       legend:{display:false},
-      tooltip:{ callbacks:{ label:(ctx)=> `${ctx.raw.label}: $${ctx.raw.x.toLocaleString()}, exposure ${ctx.raw.y.toFixed(2)}` } }
+      tooltip:{ callbacks:{ label:(ctx)=> `${ctx.raw.label}: ${formatINR(ctx.raw.x, {abbreviated:true})}, exposure ${ctx.raw.y.toFixed(2)}` } }
     },
     scales:{
-      x:{ title:{display:true, text:'Median annual wage ($)'}, grid:{color:'#E1DFD4'} },
+      x:{ title:{display:true, text:'Median annual wage (₹)'}, grid:{color:'#E1DFD4'}, ticks:{ callback:(value)=> formatINR(value, {abbreviated:true}) } },
       y:{ title:{display:true, text:'AI exposure score'}, grid:{color:'#E1DFD4'} }
     }
   }
@@ -364,6 +415,9 @@ const skillsChart = new Chart(document.getElementById('skillsChart'), {
 /* preload a representative example so the section isn't empty */
 selectOccupation(jobs.find(j=>j.title==='Customer service representatives') || jobs[0]);
 searchInput.value = (jobs.find(j=>j.title==='Customer service representatives') || jobs[0]).title;
+
+/* Kick off the live rate fetch; renders immediately at the fallback rate above, then updates in place. */
+fetchExchangeRate();
 </script>
 </body>
 </html>
