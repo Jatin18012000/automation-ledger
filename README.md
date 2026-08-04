@@ -2,7 +2,7 @@
 
 An interactive dashboard exploring AI exposure across 271 US occupations — wages, growth outlook, and the cognitive skills AI threatens most.
 
-**[View the live dashboard →](#)** *(update this link once GitHub Pages is enabled — see setup below)*
+**[View the live dashboard →](#)** *https://jatin18012000.github.io/automation-ledger/*
 
 ![Dashboard preview](preview.png)
 
@@ -21,7 +21,7 @@ Built on [**"Will AI Take My Job? Exposure, Skills & Wages"**](https://www.kaggl
 No build step, no dependencies to install — it's a static page.
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/automation-ledger.git
+git clone https://github.com/Jatin18012000/automation-ledger.git
 cd automation-ledger
 # open index.html directly in a browser, or serve it:
 python3 -m http.server 8000
@@ -32,7 +32,7 @@ python3 -m http.server 8000
 1. Push this repo to your own GitHub account
 2. Go to **Settings → Pages**
 3. Under "Build and deployment," set **Source** to `Deploy from a branch`, branch `main`, folder `/ (root)`
-4. Save — your live URL will be `https://YOUR-USERNAME.github.io/automation-ledger/`
+4. Save — your live URL will be `https://Jatin18012000.github.io/automation-ledger/`
 
 Costs nothing, no card required, updates automatically every time you push.
 
